@@ -17,11 +17,15 @@ const escrowSchema = z.object({
 
 interface EscrowFormType {
   provider: BrowserProvider;
+  onComplete: () => void;
 }
 
 type EscrowFormValues = z.infer<typeof escrowSchema>;
 
-export const EscrowForm: React.FC<EscrowFormType> = ({ provider }) => {
+export const EscrowForm: React.FC<EscrowFormType> = ({
+  provider,
+  onComplete,
+}) => {
   const {
     register,
     handleSubmit,
@@ -34,7 +38,7 @@ export const EscrowForm: React.FC<EscrowFormType> = ({ provider }) => {
   const onSubmit = async (data: EscrowFormValues) => {
     if (contract) {
       try {
-        const tx = await contract.createEscrow(data.seller, {
+        const tx = await contract?.contract?.createEscrow(data.seller, {
           value: ethers.parseEther(data.amount),
         });
         await tx.wait();
