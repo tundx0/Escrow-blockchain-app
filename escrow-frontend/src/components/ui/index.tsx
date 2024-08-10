@@ -30,8 +30,9 @@ export const Button: React.FC<
   React.PropsWithChildren<{
     variant?: "primary" | "secondary";
     size?: "sm" | "md" | "lg";
-  }>
-> = ({ children, variant = "primary", size = "md", ...props }) => {
+  }> &
+    React.ButtonHTMLAttributes<HTMLButtonElement> // Extend with button attributes
+> = ({ children, variant = "primary", size = "md", className, ...props }) => {
   const buttonClasses = classNames(
     "inline-flex justify-center items-center px-4 py-2 rounded-md transition-colors duration-300",
     {
@@ -40,7 +41,8 @@ export const Button: React.FC<
       "text-sm": size === "sm",
       "text-base": size === "md",
       "text-lg": size === "lg",
-    }
+    },
+    className // Allow external className to be passed
   );
 
   return (
@@ -66,6 +68,6 @@ export const Text: React.FC<React.PropsWithChildren> = ({ children }) => {
   return <p className="text-gray-700">{children}</p>;
 };
 
-export const Divider: React.FC = () => {
+export const Divider: React.FC<React.HTMLAttributes<HTMLDivElement>> = () => {
   return <div className="border-b border-gray-200 my-4" />;
 };
