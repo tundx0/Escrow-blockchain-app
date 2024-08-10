@@ -1,8 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EscrowForm } from "./EscrowForm";
-import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useWeb3Context } from "@/contexts/Web3Context";
 
 type CreateEscrowModalType = {
   isOpen: boolean;
@@ -13,7 +13,7 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalType> = ({
   isOpen,
   onClose,
 }) => {
-  const { provider } = useWeb3();
+  const { provider } = useWeb3Context();
   return (
     <AnimatePresence>
       {isOpen && (

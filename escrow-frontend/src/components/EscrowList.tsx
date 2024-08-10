@@ -1,6 +1,7 @@
+"use client";
+
 import React from "react";
 import { motion } from "framer-motion";
-import { useEscrowContract } from "../lib/hooks/useEscrowContract";
 import { BrowserProvider } from "ethers";
 import {
   Card,
@@ -8,25 +9,28 @@ import {
   CardContent,
   CardFooter,
   Button,
-  Divider,
   Heading,
   Text,
 } from "@/components/ui";
+import { useEscrowContext } from "@/contexts/EscrowContext";
+import { useRouter } from "next/navigation"; // Ensure this import is correct
 
 interface EscrowListProps {
   provider: BrowserProvider;
   account: string;
 }
 
-export const EscrowList: React.FC<EscrowListProps> = ({
-  provider,
-  account,
-}) => {
-  const { escrows } = useEscrowContract(provider);
+export const EscrowList: React.FC<EscrowListProps> = ({ account }) => {
+  const { escrows } = useEscrowContext();
+  const router = useRouter();
 
   const relatedEscrows = escrows.filter(
     (escrow) => escrow.buyer === account || escrow.seller === account
   );
+
+  const handleViewDetails = (id: number) => {
+    router.push(`/escrow/${id}`);
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -63,9 +67,13 @@ export const EscrowList: React.FC<EscrowListProps> = ({
                 <Text>{escrow.status}</Text>
               </div>
             </CardContent>
-            <Divider />
             <CardFooter>
-              <Button variant="primary">View Details</Button>
+              <Button
+                onClick={() => handleViewDetails(escrow.id)}
+                variant="primary"
+              >
+                View Details
+              </Button>
             </CardFooter>
           </Card>
         </motion.div>
