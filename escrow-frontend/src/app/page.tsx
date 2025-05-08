@@ -1,17 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { EscrowList } from "../components/EscrowList";
 import { CreateEscrowModal } from "../components/CreateEscrowModal";
 import { motion } from "framer-motion";
-import { useWeb3Context } from "@/contexts/Web3Context";
+import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useEscrowStore } from "@/stores/escrowStore";
 
 export default function Home() {
-  const { account, provider } = useWeb3Context();
+  // const { account } = useWeb3();
+  const { fetchEscrows, escrows, loading, error, account } = useEscrowStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (account) {
+      fetchEscrows();
+    }
+  }, [account, fetchEscrows]);
+
   return (
-    <div>
+    <div className="container mx-auto px-4 py-8">
       {!account ? (
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">Welcome to SecureEscrow</h1>
@@ -30,8 +38,13 @@ export default function Home() {
               Create Escrow
             </motion.button>
           </div>
-          {provider && account && (
-            <EscrowList provider={provider} account={account} />
+
+          {loading ? (
+            <p>Loading escrows...</p>
+          ) : error ? (
+            <p className="text-red-500">Error: {error}</p>
+          ) : (
+            <EscrowList escrows={escrows} account={account} />
           )}
         </>
       )}

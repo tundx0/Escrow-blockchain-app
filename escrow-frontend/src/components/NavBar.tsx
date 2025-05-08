@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { useWeb3Context } from "@/contexts/Web3Context";
+import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useEscrowStore } from "@/stores/escrowStore";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
 
 export const Navbar = () => {
-  const { account, connectWallet, provider, disconnectWallet } =
-    useWeb3Context();
+  const { connectWallet, provider, disconnectWallet } = useWeb3();
+  const { isAdmin, checkAdminStatus, account } = useEscrowStore();
   const [balance, setBalance] = useState<string | null>(null);
   const [showDisconnect, setShowDisconnect] = useState<boolean>(false);
 
@@ -17,15 +18,17 @@ export const Navbar = () => {
       if (provider && account) {
         const balance = await provider.getBalance(account);
         setBalance(ethers.formatEther(balance));
+        checkAdminStatus();
       }
     };
 
     fetchBalance();
-  }, [provider, account]);
+  }, [provider, account, checkAdminStatus]);
 
   const toggleDisconnect = () => {
     setShowDisconnect(!showDisconnect);
   };
+
   const hideDisconnect = () => {
     setShowDisconnect(false);
   };
@@ -43,37 +46,44 @@ export const Navbar = () => {
         <Link href="/" className="text-2xl font-bold">
           SecureEscrow
         </Link>
-        {account ? (
-          <div
-            className="relative flex items-center space-x-4"
-            ref={disconnectRef}
-          >
-            <span
-              className="bg-indigo-700 px-4 py-2 rounded cursor-pointer"
-              onClick={toggleDisconnect}
+        <div className="flex items-center space-x-4">
+          {isAdmin && (
+            <Link href="/admin" className="bg-indigo-800 px-4 py-2 rounded">
+              Admin Panel
+            </Link>
+          )}
+          {account ? (
+            <div
+              className="relative flex items-center space-x-4"
+              ref={disconnectRef}
             >
-              {account.slice(0, 6)}...{account.slice(-4)}
-            </span>
-            <span className="bg-indigo-500 px-4 py-2 rounded">
-              Balance: {balance ? `${balance.slice(0, 6)} ETH` : "Loading..."}
-            </span>
-            {showDisconnect && (
-              <button
-                onClick={handleDisconnect}
-                className="absolute top-full mt-2 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+              <span
+                className="bg-indigo-700 px-4 py-2 rounded cursor-pointer"
+                onClick={toggleDisconnect}
               >
-                Disconnect
-              </button>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={connectWallet}
-            className="bg-white text-indigo-600 px-4 py-2 rounded font-bold"
-          >
-            Connect Wallet
-          </button>
-        )}
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </span>
+              <span className="bg-indigo-500 px-4 py-2 rounded">
+                Balance: {balance ? `${balance.slice(0, 6)} ETH` : "Loading..."}
+              </span>
+              {showDisconnect && (
+                <button
+                  onClick={handleDisconnect}
+                  className="absolute top-full mt-2 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={connectWallet}
+              className="bg-white text-indigo-600 px-4 py-2 rounded font-bold"
+            >
+              Connect Wallet
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );

@@ -1,8 +1,15 @@
-import { useEscrowContract } from "../lib/hooks/useEscrowContract";
+"use client";
+
+import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BrowserProvider, ethers } from "ethers";
+import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useEscrowStore } from "@/stores/escrowStore";
+import { toast } from "react-hot-toast";
+
+import web3Service from "@/lib/services/web3Service";
+import { createEscrowContractService } from "@/lib/services/escrowContractService";
 
 const escrowSchema = z.object({
   seller: z
@@ -15,37 +22,48 @@ const escrowSchema = z.object({
     .regex(/^\d*\.?\d+$/, "Invalid amount"),
 });
 
-interface EscrowFormType {
-  provider: BrowserProvider;
+type EscrowFormValues = z.infer<typeof escrowSchema>;
+
+interface EscrowFormProps {
   onComplete: () => void;
 }
 
-type EscrowFormValues = z.infer<typeof escrowSchema>;
+export const EscrowForm: React.FC<EscrowFormProps> = ({ onComplete }) => {
+  const { provider } = useWeb3();
+  const { addEscrow } = useEscrowStore();
 
-export const EscrowForm: React.FC<EscrowFormType> = ({
-  provider,
-  onComplete,
-}) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<EscrowFormValues>({
     resolver: zodResolver(escrowSchema),
   });
-  const contract = useEscrowContract(provider);
 
   const onSubmit = async (data: EscrowFormValues) => {
-    if (contract) {
-      try {
-        const tx = await contract?.contract?.createEscrow(data.seller, {
-          value: ethers.parseEther(data.amount),
-        });
-        await tx.wait();
-        console.log("Escrow created successfully");
-      } catch (error) {
-        console.error("Error creating escrow:", error);
-      }
+    if (!provider) {
+      toast.error("Wallet not connected");
+      return;
+    }
+
+    const contract = await web3Service.getContract();
+    if (!contract) {
+      toast.error("Contract not initialized");
+      return;
+    }
+
+    const escrowService = createEscrowContractService(contract, provider);
+    const newEscrow = await escrowService.createEscrow(
+      data.seller,
+      data.amount
+    );
+
+    if (newEscrow) {
+      addEscrow(newEscrow);
+      toast.success("Escrow created successfully");
+      reset();
+      onComplete();
     }
   };
 

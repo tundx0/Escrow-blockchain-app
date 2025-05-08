@@ -1,27 +1,14 @@
-"use client";
-
 import React from "react";
 import { motion } from "framer-motion";
-import { BrowserProvider } from "ethers";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  Button,
-  Heading,
-  Text,
-} from "@/components/ui";
-import { useEscrowContext } from "@/contexts/EscrowContext";
-import { useRouter } from "next/navigation"; // Ensure this import is correct
+import { Escrow } from "@/types";
+import { useRouter } from "next/navigation";
 
 interface EscrowListProps {
-  provider: BrowserProvider;
+  escrows: Escrow[];
   account: string;
 }
 
-export const EscrowList: React.FC<EscrowListProps> = ({ account }) => {
-  const { escrows } = useEscrowContext();
+export const EscrowList: React.FC<EscrowListProps> = ({ escrows, account }) => {
   const router = useRouter();
 
   const relatedEscrows = escrows.filter(
@@ -34,48 +21,30 @@ export const EscrowList: React.FC<EscrowListProps> = ({ account }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {relatedEscrows.map((escrow, index) => (
+      {relatedEscrows.map((escrow) => (
         <motion.div
-          key={index}
+          key={escrow.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.1 }}
+          transition={{ duration: 0.3 }}
         >
-          <Card>
-            <CardHeader>
-              <Heading size="sm">Escrow #{escrow.id}</Heading>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center mb-2">
-                <Text>Seller:</Text>
-                <Text>
-                  {escrow.seller.slice(0, 6)}...{escrow.seller.slice(-4)}
-                </Text>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <Text>Buyer:</Text>
-                <Text>
-                  {escrow.buyer.slice(0, 6)}...{escrow.buyer.slice(-4)}
-                </Text>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <Text>Amount:</Text>
-                <Text>{escrow.amount} ETH</Text>
-              </div>
-              <div className="flex justify-between items-center">
-                <Text>Status:</Text>
-                <Text>{escrow.status}</Text>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button
-                onClick={() => handleViewDetails(escrow.id)}
-                variant="primary"
-              >
-                View Details
-              </Button>
-            </CardFooter>
-          </Card>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-2">Escrow #{escrow.id}</h2>
+            <p>
+              Seller: {escrow.seller.slice(0, 6)}...{escrow.seller.slice(-4)}
+            </p>
+            <p>
+              Buyer: {escrow.buyer.slice(0, 6)}...{escrow.buyer.slice(-4)}
+            </p>
+            <p>Amount: {escrow.amount} ETH</p>
+            <p>Status: {escrow.status}</p>
+            <button
+              onClick={() => handleViewDetails(escrow.id)}
+              className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded"
+            >
+              View Details
+            </button>
+          </div>
         </motion.div>
       ))}
     </div>

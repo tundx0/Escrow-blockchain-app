@@ -1,36 +1,40 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { BrowserProvider } from "ethers";
+import { useEscrowStore } from "@/stores/escrowStore";
+import web3Service from "@/lib/services/web3Service";
 
 export function useWeb3() {
-  const [provider, setProvider] = useState<BrowserProvider | null>(null);
-  const [account, setAccount] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const { setAccount, account, provider, setProvider } = useEscrowStore();
 
-  useEffect(() => {
-    // Initialize provider and account from localStorage
-    const storedAccount = localStorage.getItem("account");
-    if (storedAccount) {
-      setAccount(storedAccount);
-      if (window.ethereum) {
-        const ethProvider = new BrowserProvider(window.ethereum);
-        setProvider(ethProvider);
+  const checkIfConnected = useCallback(async () => {
+    try {
+      const provider = web3Service.getProvider();
+      if (provider) {
+        setProvider(await provider);
+        const accounts = await (await provider).listAccounts();
+        if (accounts.length > 0) {
+          setAccount(accounts[0].address);
+        }
       }
+    } catch (error) {
+      console.error("Error checking connection:", error);
     }
-  }, []);
+  }, [setAccount]);
 
   const connectWallet = useCallback(async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
         setLoading(true);
         await window.ethereum.request({ method: "eth_requestAccounts" });
-        const provider = new BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const account = await signer.getAddress();
-        setProvider(provider);
-        setAccount(account);
-        localStorage.setItem("account", account);
+        const provider = web3Service.getProvider();
+        if (provider) {
+          const signer = await (await provider).getSigner();
+          const account = await signer.getAddress();
+          setAccount(account);
+          await web3Service.getContract();
+        }
       } catch (error) {
         console.error("Failed to connect wallet:", error);
       } finally {
@@ -39,13 +43,45 @@ export function useWeb3() {
     } else {
       console.error("Ethereum object not found. Install MetaMask.");
     }
-  }, []);
+  }, [setAccount]);
 
-  const disconnectWallet = () => {
-    setProvider(null);
+  const disconnectWallet = useCallback(() => {
     setAccount(null);
-    localStorage.removeItem("account");
-  };
+  }, [setAccount]);
 
-  return { provider, account, connectWallet, loading, disconnectWallet };
+  useEffect(() => {
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+      } else {
+        disconnectWallet();
+      }
+    };
+
+    const handleDisconnect = () => {
+      disconnectWallet();
+    };
+
+    if (window.ethereum && typeof window.ethereum !== "undefined") {
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("disconnect", handleDisconnect);
+
+      return () => {
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+        window.ethereum.removeListener("disconnect", handleDisconnect);
+      };
+    }
+  }, [setAccount, disconnectWallet]);
+
+  return {
+    account,
+    connectWallet,
+    loading,
+    disconnectWallet,
+    checkIfConnected,
+    provider,
+  };
 }

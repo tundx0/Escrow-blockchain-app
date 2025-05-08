@@ -3,59 +3,76 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Divider, Heading, Text } from "@/components/ui";
-import { useWeb3Context } from "@/contexts/Web3Context";
-import { useEscrowContext } from "@/contexts/EscrowContext";
+import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useEscrowStore } from "@/stores/escrowStore";
 import { Escrow } from "@/types";
 import { motion } from "framer-motion";
+import { toast } from "react-hot-toast";
 
 const EscrowPage = () => {
   const router = useRouter();
   const params = useParams();
   const { id } = params;
-  const { account } = useWeb3Context();
-  const { escrows, contract } = useEscrowContext();
+  const { account } = useEscrowStore();
+  const {
+    escrows,
+    loading: storeLoading,
+    error: storeError,
+    fetchEscrows,
+    fundEscrow,
+    renderService,
+    releaseFunds,
+    openDispute,
+  } = useEscrowStore();
 
-  const [escrow, setEscrow] = useState<Escrow>();
+  const [escrow, setEscrow] = useState<Escrow | undefined>();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (escrows && id) {
-      const foundEscrow = escrows.find((esc) => esc.id === Number(id));
-      setEscrow(foundEscrow);
-      setLoading(false);
-    }
-  }, [escrows, id]);
+    const loadEscrow = async () => {
+      if (!escrows.length) {
+        await fetchEscrows();
+      }
+      if (escrows.length && id) {
+        const foundEscrow = escrows.find((esc) => esc.id === Number(id));
+        setEscrow(foundEscrow);
+        setLoading(false);
+      }
+    };
+    loadEscrow();
+  }, [escrows, id, fetchEscrows]);
 
   const handleAction = async (action: string) => {
-    if (!contract || !escrow) return;
+    if (!escrow) return;
 
     try {
-      let tx;
       switch (action) {
         case "fund":
-          tx = await contract.fundEscrow(escrow.id, { from: account });
+          await fundEscrow(escrow.id);
           break;
         case "renderService":
-          tx = await contract.renderService(escrow.id, { from: account });
+          await renderService(escrow.id);
           break;
         case "releaseFunds":
-          tx = await contract.releaseFunds(escrow.id, { from: account });
+          await releaseFunds(escrow.id);
           break;
         case "openDispute":
-          tx = await contract.openDispute(escrow.id, { from: account });
+          await openDispute(escrow.id);
           break;
         default:
           return;
       }
-      await tx.wait();
+      toast.success(`Action ${action} completed successfully`);
+      await fetchEscrows(); // Refresh escrows after action
       router.refresh();
     } catch (error) {
       console.error("Transaction failed:", error);
+      toast.error(`Failed to ${action}: ${(error as Error).message}`);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-
+  if (loading || storeLoading) return <div>Loading...</div>;
+  if (storeError) return <div>Error: {storeError}</div>;
   if (!escrow) return <div>Escrow not found</div>;
 
   return (

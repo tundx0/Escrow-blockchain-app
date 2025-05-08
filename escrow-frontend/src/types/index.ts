@@ -1,3 +1,4 @@
+import { BigNumberish } from "ethers";
 import { BrowserProvider, ethers } from "ethers";
 
 export interface Web3ContextType {
@@ -20,4 +21,12 @@ export interface Escrow {
   seller: string;
   amount: string;
   status: string;
+}
+
+interface EscrowCreatedEvent extends Event {
+  args: [BigNumberish, string, string, BigNumberish];
+}
+
+interface EscrowStatusChangedEvent extends Event {
+  args: [BigNumberish];
 }

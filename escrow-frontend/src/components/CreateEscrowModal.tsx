@@ -2,7 +2,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EscrowForm } from "./EscrowForm";
-import { useWeb3Context } from "@/contexts/Web3Context";
+import { useEscrowStore } from "@/stores/escrowStore";
+import { useWeb3 } from "@/lib/hooks/useWeb3";
 
 type CreateEscrowModalType = {
   isOpen: boolean;
@@ -13,7 +14,8 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalType> = ({
   isOpen,
   onClose,
 }) => {
-  const { provider } = useWeb3Context();
+  const { error, account } = useEscrowStore();
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -30,11 +32,14 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalType> = ({
             className="bg-white rounded-lg p-6 w-full max-w-md"
           >
             <h2 className="text-2xl font-bold mb-4">Create New Escrow</h2>
-            {provider ? (
-              <EscrowForm provider={provider} onComplete={onClose} />
+            {account ? (
+              <EscrowForm onComplete={onClose} />
             ) : (
-              ""
+              <p className="text-red-500">
+                Please connect your wallet to create an escrow.
+              </p>
             )}
+            {error && <p className="text-red-500 mt-2">{error}</p>}
             <button
               onClick={onClose}
               className="mt-4 bg-gray-200 text-gray-800 px-4 py-2 rounded"
