@@ -1,9 +1,9 @@
 "use client";
+
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EscrowForm } from "./EscrowForm";
-import { useEscrowStore } from "@/stores/escrowStore";
-import { useWeb3 } from "@/lib/hooks/useWeb3";
+import { useAccount } from "wagmi";
 
 type CreateEscrowModalType = {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalType> = ({
   isOpen,
   onClose,
 }) => {
-  const { error, account } = useEscrowStore();
+  const { isConnected } = useAccount();
 
   return (
     <AnimatePresence>
@@ -23,28 +23,27 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalType> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
         >
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
-            className="bg-white rounded-lg p-6 w-full max-w-md"
+            className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl relative"
           >
             <h2 className="text-2xl font-bold mb-4">Create New Escrow</h2>
-            {account ? (
+            {isConnected ? (
               <EscrowForm onComplete={onClose} />
             ) : (
-              <p className="text-red-500">
+              <p className="text-red-500 font-medium">
                 Please connect your wallet to create an escrow.
               </p>
             )}
-            {error && <p className="text-red-500 mt-2">{error}</p>}
             <button
               onClick={onClose}
-              className="mt-4 bg-gray-200 text-gray-800 px-4 py-2 rounded"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-lg cursor-pointer"
             >
-              Cancel
+              ✕
             </button>
           </motion.div>
         </motion.div>

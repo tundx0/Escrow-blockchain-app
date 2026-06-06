@@ -1,7 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #8b5cf6;
+  --color-accent: #10b981;
+}
 
 body {
-  height: 100vh;
+  background-color: #020617; /* Slate-950 */
+  color: #f1f5f9; /* Slate-100 */
+  min-height: 100vh;
+}
+
+/* Glassmorphism card utility */
+.glass-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glow-violet {
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.15);
+}
+
+.glow-green {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
 }
