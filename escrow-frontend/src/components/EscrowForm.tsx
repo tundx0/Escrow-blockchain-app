@@ -4,12 +4,13 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useWeb3 } from "@/lib/hooks/useWeb3";
-import { useEscrowStore } from "@/stores/escrowStore";
+import { useWriteEscrowCreateEscrow } from "@/lib/generated";
+import { CONTRACT_ADDRESS } from "@/constants";
+import { parseEther } from "viem";
 import { toast } from "react-hot-toast";
-
-import web3Service from "@/lib/services/web3Service";
-import { createEscrowContractService } from "@/lib/services/escrowContractService";
+import { useRouter } from "next/navigation";
+import { useConfig } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
 
 const escrowSchema = z.object({
   seller: z
@@ -29,8 +30,10 @@ interface EscrowFormProps {
 }
 
 export const EscrowForm: React.FC<EscrowFormProps> = ({ onComplete }) => {
-  const { provider } = useWeb3();
-  const { addEscrow } = useEscrowStore();
+  const router = useRouter();
+  const config = useConfig();
+  const { writeContractAsync: createEscrow, isPending } =
+    useWriteEscrowCreateEscrow();
 
   const {
     register,
@@ -42,28 +45,36 @@ export const EscrowForm: React.FC<EscrowFormProps> = ({ onComplete }) => {
   });
 
   const onSubmit = async (data: EscrowFormValues) => {
-    if (!provider) {
-      toast.error("Wallet not connected");
-      return;
-    }
+    const toastId = toast.loading("Creating escrow...");
+    try {
+      const hash = await createEscrow({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        args: [data.seller as `0x${string}`],
+        value: parseEther(data.amount),
+      });
 
-    const contract = await web3Service.getContract();
-    if (!contract) {
-      toast.error("Contract not initialized");
-      return;
-    }
+      toast.loading("Waiting for confirmations...", { id: toastId });
+      const receipt = await waitForTransactionReceipt(config, { hash });
 
-    const escrowService = createEscrowContractService(contract, provider);
-    const newEscrow = await escrowService.createEscrow(
-      data.seller,
-      data.amount
-    );
-
-    if (newEscrow) {
-      addEscrow(newEscrow);
-      toast.success("Escrow created successfully");
-      reset();
-      onComplete();
+      // In Escrow.sol: event EscrowCreated(uint256 indexed escrowId, address buyer, address seller, uint256 amount)
+      // The escrowId is the first indexed argument, which is located in topics[1] of the log
+      const topic = receipt.logs[0]?.topics[1];
+      if (topic) {
+        const newId = Number(BigInt(topic));
+        toast.success("Escrow created successfully", { id: toastId });
+        reset();
+        onComplete();
+        router.push(`/escrow/${newId}`);
+      } else {
+        toast.success("Escrow created successfully", { id: toastId });
+        reset();
+        onComplete();
+      }
+    } catch (error) {
+      console.error("Error creating escrow:", error);
+      toast.error(`Failed to create escrow: ${(error as Error).message}`, {
+        id: toastId,
+      });
     }
   };
 
@@ -73,28 +84,34 @@ export const EscrowForm: React.FC<EscrowFormProps> = ({ onComplete }) => {
       className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-md"
     >
       <div className="mb-4">
-        <label className="block text-gray-700">Seller Address</label>
+        <label className="block text-gray-700 font-medium mb-1">
+          Seller Address
+        </label>
         <input
           type="text"
           {...register("seller")}
-          className={`w-full px-3 py-2 border rounded ${
+          disabled={isPending}
+          className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             errors.seller ? "border-red-500" : "border-gray-300"
           }`}
-          placeholder="Seller Address"
+          placeholder="0x..."
         />
         {errors.seller && (
           <p className="text-red-500 text-sm mt-1">{errors.seller.message}</p>
         )}
       </div>
       <div className="mb-4">
-        <label className="block text-gray-700">Amount in ETH</label>
+        <label className="block text-gray-700 font-medium mb-1">
+          Amount in ETH
+        </label>
         <input
           type="text"
           {...register("amount")}
-          className={`w-full px-3 py-2 border rounded ${
+          disabled={isPending}
+          className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             errors.amount ? "border-red-500" : "border-gray-300"
           }`}
-          placeholder="Amount in ETH"
+          placeholder="0.0"
         />
         {errors.amount && (
           <p className="text-red-500 text-sm mt-1">{errors.amount.message}</p>
@@ -102,9 +119,10 @@ export const EscrowForm: React.FC<EscrowFormProps> = ({ onComplete }) => {
       </div>
       <button
         type="submit"
-        className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-300"
+        disabled={isPending}
+        className="w-full px-4 py-2 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 transition duration-300 disabled:bg-indigo-400 cursor-pointer"
       >
-        Create Escrow
+        {isPending ? "Creating..." : "Create Escrow"}
       </button>
     </form>
   );

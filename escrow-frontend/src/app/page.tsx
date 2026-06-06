@@ -4,23 +4,40 @@ import React, { useState, useEffect } from "react";
 import { EscrowList } from "../components/EscrowList";
 import { CreateEscrowModal } from "../components/CreateEscrowModal";
 import { motion } from "framer-motion";
-import { useWeb3 } from "@/lib/hooks/useWeb3";
-import { useEscrowStore } from "@/stores/escrowStore";
+import { useAccount } from "wagmi";
+import { useEscrows } from "@/lib/hooks/useEscrows";
+import { useWatchEscrowEscrowCreatedEvent } from "@/lib/generated";
+import { CONTRACT_ADDRESS } from "@/constants";
 
 export default function Home() {
-  // const { account } = useWeb3();
-  const { fetchEscrows, escrows, loading, error, account } = useEscrowStore();
+  const { address: account, isConnected } = useAccount();
+  const { escrows, isLoading, refetch } = useEscrows();
+  const [mounted, setMounted] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
-    if (account) {
-      fetchEscrows();
-    }
-  }, [account, fetchEscrows]);
+    setMounted(true);
+  }, []);
+
+  // Auto-refetch escrows when events are fired
+  useWatchEscrowEscrowCreatedEvent({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    onLogs() {
+      refetch();
+    },
+  });
+
+  if (!mounted) {
+    return (
+      <div className="text-center py-12 text-slate-400">
+        Loading escrows...
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {!account ? (
+      {!isConnected || !account ? (
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">Welcome to SecureEscrow</h1>
           <p className="text-xl mb-8">Connect your wallet to get started</p>
@@ -33,16 +50,14 @@ export default function Home() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsCreateModalOpen(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded font-bold"
+              className="bg-indigo-600 text-white px-4 py-2 rounded font-bold cursor-pointer"
             >
               Create Escrow
             </motion.button>
           </div>
 
-          {loading ? (
+          {isLoading ? (
             <p>Loading escrows...</p>
-          ) : error ? (
-            <p className="text-red-500">Error: {error}</p>
           ) : (
             <EscrowList escrows={escrows} account={account} />
           )}
